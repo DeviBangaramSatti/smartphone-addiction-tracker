@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ════════════════════════════════════════
+         PERMISSIONS
+         ════════════════════════════════════════ -->
+    <!-- Required to read app usage statistics via UsageStatsManager -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Internet access for Firebase sync and ML API calls -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Push notifications for usage alerts -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Foreground service for continuous usage tracking -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <application
+        android:name=".SmartTrackerApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.SmartTracker"
+        android:usesCleartextTraffic="false">
+
+        <!-- ── Main Activity ── -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ── UsageTrackerService
+             Foreground service that polls UsageStatsManager every minute.
+             Declared as DATA_SYNC type to avoid background restrictions.
+         ── -->
+        <service
+            android:name=".service.UsageTrackerService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- ── FirebaseSyncWorker is scheduled via WorkManager — no declaration needed ── -->
+
+    </application>
+
+</manifest>

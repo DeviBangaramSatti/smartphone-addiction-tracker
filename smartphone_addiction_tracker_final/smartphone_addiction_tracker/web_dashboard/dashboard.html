@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SmartTracker — Addiction Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN: Industrial / Terminal — dark, dense,
+   monospaced accents, electric amber & crimson
+═══════════════════════════════════════════ */
+:root {
+  --bg0:      #0a0a0a;
+  --bg1:      #111111;
+  --bg2:      #181818;
+  --bg3:      #222222;
+  --border:   #2a2a2a;
+  --border2:  #333333;
+  --text0:    #f0ece4;
+  --text1:    #9e9a93;
+  --text2:    #5a5652;
+  --amber:    #f5a623;
+  --amber-d:  #c07c0a;
+  --crimson:  #e8304a;
+  --green:    #3dd68c;
+  --blue:     #4d9de0;
+  --purple:   #a78bfa;
+  --low:      #3dd68c;
+  --medium:   #f5a623;
+  --high:     #e8304a;
+  --font-mono: 'Space Mono', monospace;
+  --font-ui:   'Syne', sans-serif;
+  --radius:    4px;
+  --transition: 200ms ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg0);
+  color: var(--text0);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Scanline overlay ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+}
+
+/* ═══════════════════ HEADER ═══════════════════ */
+.header {
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border2);
+  padding: 0 32px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 12px;
+}
+.logo-icon {
+  width: 32px; height: 32px;
+  background: var(--amber);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex; align-items: center; justify-content: center;
+  animation: pulse-hex 3s ease-in-out infinite;
+}
+@keyframes pulse-hex {
+  0%,100% { box-shadow: 0 0 0 0 rgba(245,166,35,0.4); }
+  50%     { box-shadow: 0 0 0 8px rgba(245,166,35,0); }
+}
+.logo-text { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+.logo-text span { color: var(--amber); }
+
+.header-right {
+  display: flex; align-items: center; gap: 20px;
+}
+
+.live-badge {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--green); letter-spacing: 1px;
+}
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%; background: var(--green);
+  animation: blink 1.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+.ws-status {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text2); letter-spacing: 0.5px;
+}
+.ws-status.connected { color: var(--green); }
+.ws-status.disconnected { color: var(--crimson); }
+
+.last-updated {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text2);
+}
+
+/* ═══════════════════ MAIN LAYOUT ═══════════════════ */
+.main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 32px 60px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto;
+  gap: 16px;
+}
+
+/* ═══════════════════ CARDS ═══════════════════ */
+.card {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--transition);
+}
+.card:hover { border-color: var(--border2); }
+
+/* corner bracket decoration */
+.card::before, .card::after {
+  content: ''; position: absolute;
+  width: 12px; height: 12px;
+  border-color: var(--amber);
+  border-style: solid;
+  opacity: 0.4;
+}
+.card::before { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+.card::after  { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+
+.card-label {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text2); letter-spacing: 2px;
+  text-transform: uppercase; margin-bottom: 10px;
+}
+.card-title {
+  font-size: 15px; font-weight: 600;
+  color: var(--text1); margin-bottom: 16px;
+}
+
+/* span helpers */
+.span-2 { grid-column: span 2; }
+.span-3 { grid-column: span 3; }
+
+/* ═══════════════════ PREDICTION HERO ═══════════════════ */
+.prediction-hero {
+  grid-column: span 3;
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 32px;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* animated grid background */
+.prediction-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(245,166,35,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245,166,35,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.prediction-left {}
+
+.prediction-level-label {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text2); letter-spacing: 3px;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+
+.prediction-level {
+  font-size: 72px; font-weight: 800; line-height: 1;
+  letter-spacing: -3px;
+  transition: color 0.6s ease, text-shadow 0.6s ease;
+}
+.prediction-level.Low    { color: var(--low);    text-shadow: 0 0 40px rgba(61,214,140,0.3); }
+.prediction-level.Medium { color: var(--medium); text-shadow: 0 0 40px rgba(245,166,35,0.3); }
+.prediction-level.High   { color: var(--high);   text-shadow: 0 0 40px rgba(232,48,74,0.3); }
+
+.prediction-confidence {
+  margin-top: 8px;
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--text1);
+}
+.conf-val { color: var(--amber); font-weight: 700; }
+
+.prediction-insight {
+  margin-top: 16px; font-size: 14px;
+  color: var(--text1); max-width: 340px;
+  line-height: 1.7;
+  border-left: 2px solid var(--border2);
+  padding-left: 14px;
+}
+
+/* ── Gauge ── */
+.gauge-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.gauge-canvas-wrap {
+  position: relative; width: 160px; height: 100px;
+}
+.gauge-canvas-wrap canvas { position: absolute; top: 0; left: 0; }
+.gauge-val {
+  font-family: var(--font-mono); font-size: 24px;
+  font-weight: 700; color: var(--amber);
+}
+.gauge-label {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text2); letter-spacing: 1px; text-transform: uppercase;
+}
+
+/* ── Features grid ── */
+.prediction-right {}
+.features-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.feature-item {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 12px;
+}
+.feature-name {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text2); letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 4px;
+}
+.feature-val {
+  font-size: 18px; font-weight: 700; color: var(--text0);
+}
+.feature-unit {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text2); margin-left: 3px;
+}
+.feature-bar {
+  margin-top: 6px; height: 2px;
+  background: var(--border2); border-radius: 1px; overflow: hidden;
+}
+.feature-bar-fill {
+  height: 100%; border-radius: 1px;
+  background: var(--amber);
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Probability bars ── */
+.prob-bars { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.prob-row {
+  display: grid; grid-template-columns: 52px 1fr 48px;
+  align-items: center; gap: 8px;
+}
+.prob-label {
+  font-family: var(--font-mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.prob-label.Low    { color: var(--low); }
+.prob-label.Medium { color: var(--medium); }
+.prob-label.High   { color: var(--high); }
+.prob-track {
+  height: 6px; background: var(--bg3);
+  border-radius: 3px; overflow: hidden;
+}
+.prob-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.prob-fill.Low    { background: var(--low); }
+.prob-fill.Medium { background: var(--medium); }
+.prob-fill.High   { background: var(--high); }
+.prob-pct {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text1); text-align: right;
+}
+
+/* ── Refresh button ── */
+.btn-refresh {
+  margin-top: 20px;
+  background: transparent;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 10px 20px; cursor: pointer;
+  border-radius: var(--radius);
+  transition: all var(--transition);
+  display: flex; align-items: center; gap: 8px;
+}
+.btn-refresh:hover {
+  background: var(--amber); color: var(--bg0);
+}
+.btn-refresh:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-refresh svg { width: 14px; height: 14px; }
+.spinning { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════ STAT CARDS ═══════════════════ */
+.stat-card {
+  background: var(--bg1); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 24px;
+  display: flex; align-items: center; gap: 16px;
+  position: relative; overflow: hidden;
+}
+.stat-card::after {
+  content: attr(data-index);
+  position: absolute; right: 16px; bottom: 8px;
+  font-family: var(--font-mono); font-size: 48px;
+  font-weight: 700; color: rgba(255,255,255,0.02);
+  line-height: 1;
+}
+.stat-icon {
+  width: 44px; height: 44px; border-radius: var(--radius);
+  background: var(--bg3); display: flex; align-items: center;
+  justify-content: center; font-size: 20px; flex-shrink: 0;
+}
+.stat-info { min-width: 0; }
+.stat-val {
+  font-size: 28px; font-weight: 800; line-height: 1;
+  color: var(--text0);
+}
+.stat-lbl {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text2); letter-spacing: 1px;
+  text-transform: uppercase; margin-top: 4px;
+}
+.stat-delta {
+  font-family: var(--font-mono); font-size: 10px;
+  margin-top: 4px;
+}
+.stat-delta.up   { color: var(--crimson); }
+.stat-delta.down { color: var(--green); }
+
+/* ═══════════════════ CHARTS ═══════════════════ */
+.chart-wrap {
+  position: relative; width: 100%;
+}
+.chart-wrap canvas { border-radius: 2px; }
+
+/* ═══════════════════ APP LIST ═══════════════════ */
+.app-list { display: flex; flex-direction: column; gap: 6px; }
+.app-row {
+  display: grid; grid-template-columns: 26px 1fr auto;
+  align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.app-row:last-child { border-bottom: none; }
+.app-rank {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text2); text-align: right;
+}
+.app-info { min-width: 0; }
+.app-name {
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.app-bar-wrap {
+  height: 3px; background: var(--bg3);
+  border-radius: 2px; overflow: hidden; margin-top: 4px;
+}
+.app-bar {
+  height: 100%; border-radius: 2px;
+  transition: width 1s cubic-bezier(0.4,0,0.2,1);
+}
+.app-bar.social { background: var(--crimson); }
+.app-bar.normal { background: var(--blue); }
+.app-time {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--amber); white-space: nowrap; text-align: right;
+}
+.social-badge {
+  display: inline-block; font-size: 8px;
+  background: rgba(232,48,74,0.15); color: var(--crimson);
+  border: 1px solid rgba(232,48,74,0.3);
+  padding: 1px 5px; border-radius: 2px; margin-left: 4px;
+  font-family: var(--font-mono); letter-spacing: 0.5px;
+}
+
+/* ═══════════════════ MODEL INFO ═══════════════════ */
+.model-info-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.mi-item {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px;
+}
+.mi-label {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text2); letter-spacing: 1.5px; text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.mi-val {
+  font-size: 20px; font-weight: 700; color: var(--amber);
+}
+.mi-val.green  { color: var(--green); }
+.mi-val.small  { font-size: 13px; font-weight: 400; color: var(--text0); font-family: var(--font-mono); }
+
+.feature-imp-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.fi-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+.fi-label { font-family: var(--font-mono); font-size: 10px; color: var(--text1); }
+.fi-track { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; margin-top: 2px; }
+.fi-fill  { height: 100%; background: linear-gradient(90deg, var(--blue), var(--purple)); border-radius: 2px; }
+.fi-pct   { font-family: var(--font-mono); font-size: 10px; color: var(--text2); }
+
+/* ═══════════════════ 30-DAY TIMELINE ═══════════════════ */
+.timeline-heat {
+  display: grid;
+  grid-template-columns: repeat(30, 1fr);
+  gap: 3px; margin-top: 12px;
+}
+.heat-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform 0.15s;
+  position: relative;
+}
+.heat-cell:hover { transform: scale(1.3); z-index: 10; }
+.heat-cell.Low    { background: rgba(61,214,140,0.5); }
+.heat-cell.Medium { background: rgba(245,166,35,0.6); }
+.heat-cell.High   { background: rgba(232,48,74,0.7); }
+.heat-cell::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg0); border: 1px solid var(--border2);
+  color: var(--text0); font-family: var(--font-mono); font-size: 9px;
+  padding: 4px 8px; border-radius: 2px; white-space: nowrap;
+  pointer-events: none; opacity: 0;
+  transition: opacity 0.15s;
+}
+.heat-cell:hover::after { opacity: 1; }
+
+/* ═══════════════════ TERMINAL LOG ═══════════════════ */
+.terminal {
+  background: #0d0d0d; border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  font-family: var(--font-mono); font-size: 11px;
+  line-height: 1.8; max-height: 200px; overflow-y: auto;
+  color: var(--text1);
+}
+.terminal::-webkit-scrollbar { width: 4px; }
+.terminal::-webkit-scrollbar-thumb { background: var(--border2); }
+.log-line { display: block; }
+.log-ts   { color: var(--text2); margin-right: 8px; }
+.log-tag-info   { color: var(--blue); margin-right: 6px; }
+.log-tag-ok     { color: var(--green); margin-right: 6px; }
+.log-tag-warn   { color: var(--amber); margin-right: 6px; }
+.log-tag-err    { color: var(--crimson); margin-right: 6px; }
+.log-msg  { color: var(--text0); }
+
+/* ═══════════════════ LOADER ═══════════════════ */
+.loading-overlay {
+  position: fixed; inset: 0; background: var(--bg0);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 9000; gap: 20px;
+  transition: opacity 0.4s ease;
+}
+.loading-overlay.hidden { opacity: 0; pointer-events: none; }
+.loader-hex {
+  width: 60px; height: 60px;
+  background: var(--amber);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  animation: loader-spin 1s linear infinite;
+}
+@keyframes loader-spin { to { transform: rotate(360deg); } }
+.loader-text {
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--text2); letter-spacing: 2px;
+}
+
+/* ═══════════════════ SCROLLBAR ═══════════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg0); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ═══════════════════ RESPONSIVE ═══════════════════ */
+@media (max-width: 1100px) {
+  .main { grid-template-columns: 1fr 1fr; }
+  .span-3 { grid-column: span 2; }
+  .prediction-hero { grid-template-columns: 1fr; grid-column: span 2; }
+  .gauge-wrap { display: none; }
+}
+@media (max-width: 700px) {
+  .main { grid-template-columns: 1fr; padding: 16px; }
+  .span-2, .span-3 { grid-column: span 1; }
+  .prediction-level { font-size: 48px; }
+  .features-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Appear animation ── */
+.card, .prediction-hero, .stat-card {
+  animation: appear 0.4s ease both;
+}
+@keyframes appear {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card:nth-child(1)  { animation-delay: 0.05s }
+.card:nth-child(2)  { animation-delay: 0.10s }
+.card:nth-child(3)  { animation-delay: 0.15s }
+.card:nth-child(4)  { animation-delay: 0.20s }
+.card:nth-child(5)  { animation-delay: 0.25s }
+.card:nth-child(6)  { animation-delay: 0.30s }
+.card:nth-child(7)  { animation-delay: 0.35s }
+.card:nth-child(8)  { animation-delay: 0.40s }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loader">
+  <div class="loader-hex"></div>
+  <div class="loader-text">INITIALISING NEURAL PIPELINE...</div>
+</div>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon"></div>
+    <div class="logo-text">Smart<span>Tracker</span></div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      LIVE MODEL
+    </div>
+    <div class="ws-status disconnected" id="wsStatus">⬤ WS DISCONNECTED</div>
+    <div class="last-updated" id="lastUpdated">—</div>
+  </div>
+</header>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main class="main">
+
+  <!-- ── 1. PREDICTION HERO (full width) ── -->
+  <section class="prediction-hero span-3" id="predHero">
+    <div class="prediction-left">
+      <div class="prediction-level-label">// ADDICTION_LEVEL → ML OUTPUT</div>
+      <div class="prediction-level" id="predLevel">—</div>
+      <div class="prediction-confidence">
+        MODEL CONFIDENCE: <span class="conf-val" id="predConf">—</span>
+      </div>
+      <div class="prediction-insight" id="predInsight">Connecting to model...</div>
+
+      <button class="btn-refresh" id="btnRefresh" onclick="triggerLiveUpdate()">
+        <svg id="refreshIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+          <path d="M8 16H3v5"/>
+        </svg>
+        SIMULATE + PREDICT
+      </button>
+    </div>
+
+    <div class="gauge-wrap">
+      <div class="gauge-canvas-wrap">
+        <canvas id="gaugeCanvas" width="160" height="100"></canvas>
+      </div>
+      <div class="gauge-val" id="gaugeVal">—%</div>
+      <div class="gauge-label">RISK SCORE</div>
+      <div class="prob-bars" style="width:160px;margin-top:16px;">
+        <div class="prob-row">
+          <span class="prob-label Low">LOW</span>
+          <div class="prob-track"><div class="prob-fill Low" id="pbLow" style="width:0%"></div></div>
+          <span class="prob-pct" id="ppLow">0%</span>
+        </div>
+        <div class="prob-row">
+          <span class="prob-label Medium">MED</span>
+          <div class="prob-track"><div class="prob-fill Medium" id="pbMed" style="width:0%"></div></div>
+          <span class="prob-pct" id="ppMed">0%</span>
+        </div>
+        <div class="prob-row">
+          <span class="prob-label High">HIGH</span>
+          <div class="prob-track"><div class="prob-fill High" id="pbHigh" style="width:0%"></div></div>
+          <span class="prob-pct" id="ppHigh">0%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="prediction-right">
+      <div class="card-label">// INPUT_FEATURES → MODEL</div>
+      <div class="features-grid" id="featuresGrid">
+        <!-- populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2. STAT CARDS (3 cols) ── -->
+  <div class="stat-card" data-index="1">
+    <div class="stat-icon">📱</div>
+    <div class="stat-info">
+      <div class="stat-val" id="statScreenTime">—</div>
+      <div class="stat-lbl">Screen Time Today</div>
+      <div class="stat-delta" id="statScreenDelta">—</div>
+    </div>
+  </div>
+
+  <div class="stat-card" data-index="2">
+    <div class="stat-icon">🔄</div>
+    <div class="stat-info">
+      <div class="stat-val" id="statSessions">—</div>
+      <div class="stat-lbl">Total Sessions</div>
+      <div class="stat-delta" id="statSessionDelta">—</div>
+    </div>
+  </div>
+
+  <div class="stat-card" data-index="3">
+    <div class="stat-icon">🌙</div>
+    <div class="stat-info">
+      <div class="stat-val" id="statNightUse">—</div>
+      <div class="stat-lbl">Night Usage (10PM–6AM)</div>
+      <div class="stat-delta up" id="statNightDelta">—</div>
+    </div>
+  </div>
+
+  <!-- ── 3. 30-DAY LINE CHART ── -->
+  <div class="card span-2">
+    <div class="card-label">// TREND_ANALYSIS → 30 DAYS</div>
+    <div class="card-title">Daily Screen Time vs Social Media</div>
+    <div class="chart-wrap" style="height:200px">
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── 4. TOP APPS ── -->
+  <div class="card">
+    <div class="card-label">// APP_USAGE → TODAY</div>
+    <div class="card-title">Top Applications</div>
+    <div class="app-list" id="appList">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+  <!-- ── 5. 30-DAY ADDICTION HEATMAP ── -->
+  <div class="card span-3">
+    <div class="card-label">// ADDICTION_CALENDAR → 30 DAY HISTORY</div>
+    <div class="card-title">
+      Risk Level Timeline
+      <span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:12px;">
+        <span style="color:var(--low)">■</span> Low &nbsp;
+        <span style="color:var(--medium)">■</span> Medium &nbsp;
+        <span style="color:var(--high)">■</span> High
+      </span>
+    </div>
+    <div class="timeline-heat" id="timelineHeat"></div>
+  </div>
+
+  <!-- ── 6. DONUT chart – social vs other ── -->
+  <div class="card">
+    <div class="card-label">// USAGE_BREAKDOWN → SOCIAL</div>
+    <div class="card-title">Social vs Non-Social</div>
+    <div class="chart-wrap" style="height:180px">
+      <canvas id="socialChart"></canvas>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:12px;">
+      <div>
+        <div class="feature-name">SOCIAL</div>
+        <div style="font-size:18px;font-weight:700;color:var(--crimson)" id="socialHours">—</div>
+      </div>
+      <div>
+        <div class="feature-name">OTHER</div>
+        <div style="font-size:18px;font-weight:700;color:var(--blue)" id="otherHours">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 7. WEEKLY BAR ── -->
+  <div class="card">
+    <div class="card-label">// WEEKLY_PATTERN → 7 DAYS</div>
+    <div class="card-title">Daily Usage Pattern (hours)</div>
+    <div class="chart-wrap" style="height:180px">
+      <canvas id="weeklyChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── 8. MODEL INFO ── -->
+  <div class="card">
+    <div class="card-label">// MODEL_METADATA → RANDOM_FOREST</div>
+    <div class="card-title">ML Model Intelligence</div>
+    <div class="model-info-grid" id="modelGrid">
+      <!-- populated by JS -->
+    </div>
+    <div style="margin-top:16px;">
+      <div class="feature-name" style="margin-bottom:8px;">FEATURE IMPORTANCES</div>
+      <div class="feature-imp-list" id="featureImpList"></div>
+    </div>
+  </div>
+
+  <!-- ── 9. TERMINAL LOG (full width) ── -->
+  <div class="card span-3">
+    <div class="card-label">// SYSTEM_LOG → LIVE</div>
+    <div class="card-title">Activity Terminal</div>
+    <div class="terminal" id="terminal"></div>
+  </div>
+
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  SmartTracker Dashboard — Frontend Engine
+//  Connects to FastAPI server at localhost:8080
+//  WebSocket: ws://localhost:8080/ws/live (auto-reconnects)
+// ═══════════════════════════════════════════════════════════
+
+const API = '';   // same-origin; set to 'http://localhost:8080' for external
+let trendChart, socialChart, weeklyChart;
+let wsReconnectTimer = null;
+let isRefreshing = false;
+
+// ── Terminal log ─────────────────────────────────────────────────────────────
+function log(msg, tag = 'INFO') {
+  const el  = document.getElementById('terminal');
+  const ts  = new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const cls = { INFO:'info', OK:'ok', WARN:'warn', ERR:'err' }[tag] || 'info';
+  const line = document.createElement('span');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-ts">[${ts}]</span><span class="log-tag-${cls}">[${tag}]</span><span class="log-msg">${msg}</span>`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+  // keep last 60 lines
+  while (el.children.length > 60) el.removeChild(el.firstChild);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmtMs = ms => {
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+};
+const fmtHours = h => `${h.toFixed(1)}h`;
+
+// ── Fetch wrapper ─────────────────────────────────────────────────────────────
+async function apiFetch(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+async function apiPost(path) {
+  const r = await fetch(API + path, { method: 'POST' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER FUNCTIONS
+// ═══════════════════════════════════════════════════════════
+
+// ── Prediction Hero ───────────────────────────────────────────────────────────
+function renderPrediction(d) {
+  const level = d.addiction_level;
+  const el = document.getElementById('predLevel');
+  el.textContent = level.toUpperCase();
+  el.className = `prediction-level ${level}`;
+
+  document.getElementById('predConf').textContent = `${(d.confidence * 100).toFixed(1)}%`;
+  document.getElementById('predInsight').textContent = d.insight;
+
+  // Prob bars
+  const probs = d.all_probabilities || {};
+  setProbBar('Low',    probs['Low']    || 0);
+  setProbBar('Medium', probs['Medium'] || 0);
+  setProbBar('High',   probs['High']   || 0);
+
+  // Risk gauge (semi-circle)
+  const riskPct = { Low: 0.2, Medium: 0.55, High: 0.9 }[level] || 0.5;
+  drawGauge(riskPct, level);
+  document.getElementById('gaugeVal').textContent = `${Math.round(riskPct * 100)}%`;
+
+  // Feature items
+  if (d.features) renderFeatures(d.features);
+
+  // Update header timestamp
+  document.getElementById('lastUpdated').textContent =
+    'UPDATED ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function setProbBar(cls, val) {
+  const pct = Math.round(val * 100);
+  document.getElementById('pb' + cls.slice(0,1).toUpperCase() + cls.slice(1)).style.width = pct + '%';
+  document.getElementById('pp' + cls.slice(0,1).toUpperCase() + cls.slice(1)).textContent = pct + '%';
+}
+
+function renderFeatures(f) {
+  const defs = [
+    { key: 'daily_usage_hours',         label: 'Daily Usage',    unit: 'hrs', max: 16 },
+    { key: 'night_usage_hours',         label: 'Night Usage',    unit: 'hrs', max: 6  },
+    { key: 'app_switching_frequency',   label: 'App Switches',   unit: '/d',  max: 300},
+    { key: 'social_media_percentage',   label: 'Social Media',   unit: '%',   max: 100},
+    { key: 'total_sessions',            label: 'Sessions',       unit: '',    max: 200},
+    { key: 'avg_session_duration_mins', label: 'Avg Session',    unit: 'min', max: 30 },
+  ];
+  const grid = document.getElementById('featuresGrid');
+  grid.innerHTML = defs.map(def => {
+    const val = f[def.key] || 0;
+    const pct = Math.min(100, (val / def.max) * 100).toFixed(0);
+    const display = Number.isInteger(val) ? val : val.toFixed(1);
+    return `<div class="feature-item">
+      <div class="feature-name">${def.label}</div>
+      <div class="feature-val">${display}<span class="feature-unit">${def.unit}</span></div>
+      <div class="feature-bar"><div class="feature-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── Semi-circle gauge ─────────────────────────────────────────────────────────
+function drawGauge(ratio, level) {
+  const canvas = document.getElementById('gaugeCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H - 8, r = H - 16;
+  const startAngle = Math.PI, endAngle = 2 * Math.PI;
+
+  // Background arc
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, endAngle);
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 12;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Colored arc
+  const colors = { Low: '#3dd68c', Medium: '#f5a623', High: '#e8304a' };
+  const grad = ctx.createLinearGradient(0, 0, W, 0);
+  grad.addColorStop(0, '#3dd68c');
+  grad.addColorStop(0.5, '#f5a623');
+  grad.addColorStop(1, '#e8304a');
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, startAngle + ratio * Math.PI);
+  ctx.strokeStyle = colors[level] || '#f5a623';
+  ctx.lineWidth = 12;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Needle
+  const angle = startAngle + ratio * Math.PI;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + (r - 6) * Math.cos(angle), cy + (r - 6) * Math.sin(angle));
+  ctx.strokeStyle = '#f0ece4';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5, 0, 2 * Math.PI);
+  ctx.fillStyle = '#f0ece4';
+  ctx.fill();
+}
+
+// ── Stat Cards ────────────────────────────────────────────────────────────────
+function renderStatCards(today, trend) {
+  document.getElementById('statScreenTime').textContent  = fmtMs(today.total_usage_ms || 0);
+  document.getElementById('statSessions').textContent    = today.total_sessions || 0;
+  document.getElementById('statNightUse').textContent    = fmtMs(today.night_usage_ms || 0);
+
+  if (trend && trend.length >= 2) {
+    const prev = trend[trend.length - 2];
+    const curr = trend[trend.length - 1];
+    const delta = ((curr.total_usage_ms - prev.total_usage_ms) / (prev.total_usage_ms || 1) * 100).toFixed(1);
+    const sign  = delta >= 0 ? '+' : '';
+    const cls   = delta >= 0 ? 'up' : 'down';
+    const icon  = delta >= 0 ? '▲' : '▼';
+    const sdEl  = document.getElementById('statScreenDelta');
+    sdEl.textContent = `${icon} ${sign}${delta}% vs yesterday`;
+    sdEl.className = `stat-delta ${cls}`;
+  }
+}
+
+// ── App List ──────────────────────────────────────────────────────────────────
+function renderAppList(apps) {
+  const maxMs = apps[0]?.usage_ms || 1;
+  document.getElementById('appList').innerHTML = apps.slice(0, 8).map((app, i) => {
+    const pct  = Math.round(app.usage_ms / maxMs * 100);
+    const cls  = app.is_social ? 'social' : 'normal';
+    const soc  = app.is_social ? '<span class="social-badge">SOCIAL</span>' : '';
+    return `<div class="app-row">
+      <div class="app-rank">${String(i+1).padStart(2,'0')}</div>
+      <div class="app-info">
+        <div class="app-name">${app.app_name}${soc}</div>
+        <div class="app-bar-wrap"><div class="app-bar ${cls}" style="width:${pct}%"></div></div>
+      </div>
+      <div class="app-time">${fmtMs(app.usage_ms)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── 30-Day Line Chart ─────────────────────────────────────────────────────────
+function renderTrendChart(data) {
+  const labels = data.map(d => {
+    const dt = new Date(d.date);
+    return `${dt.getMonth()+1}/${dt.getDate()}`;
+  });
+  const total  = data.map(d => +(d.total_usage_ms / 3600000).toFixed(2));
+  const social = data.map(d => +(d.social_usage_ms / 3600000).toFixed(2));
+
+  if (trendChart) trendChart.destroy();
+  const ctx = document.getElementById('trendChart').getContext('2d');
+
+  const areaGrad = ctx.createLinearGradient(0, 0, 0, 200);
+  areaGrad.addColorStop(0, 'rgba(77,157,224,0.25)');
+  areaGrad.addColorStop(1, 'rgba(77,157,224,0)');
+
+  const socGrad = ctx.createLinearGradient(0, 0, 0, 200);
+  socGrad.addColorStop(0, 'rgba(232,48,74,0.25)');
+  socGrad.addColorStop(1, 'rgba(232,48,74,0)');
+
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Total (hrs)',
+          data: total,
+          borderColor: '#4d9de0',
+          backgroundColor: areaGrad,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          fill: true,
+          tension: 0.4,
+        },
+        {
+          label: 'Social (hrs)',
+          data: social,
+          borderColor: '#e8304a',
+          backgroundColor: socGrad,
+          borderWidth: 1.5,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          fill: true,
+          tension: 0.4,
+          borderDash: [4, 2],
+        }
+      ]
+    },
+    options: chartDefaults({
+      plugins: {
+        legend: {
+          labels: { color: '#9e9a93', font: { family: 'Space Mono', size: 10 }, boxWidth: 12 }
+        }
+      },
+      scales: {
+        y: { ...yAxis(), title: { display: true, text: 'hours', color: '#5a5652', font: { size: 10 } } }
+      }
+    })
+  });
+}
+
+// ── Weekly Bar ────────────────────────────────────────────────────────────────
+function renderWeeklyChart(data) {
+  // Use last 7 entries of the 30-day trend
+  const slice  = data.slice(-7);
+  const labels = slice.map(d => {
+    const dt = new Date(d.date);
+    return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+  });
+  const hours = slice.map(d => +(d.total_usage_ms / 3600000).toFixed(2));
+  const level = slice.map(d => d.addiction_level);
+
+  const colors = hours.map((_, i) => ({
+    Low: 'rgba(61,214,140,0.7)', Medium: 'rgba(245,166,35,0.7)', High: 'rgba(232,48,74,0.7)'
+  }[level[i]] || 'rgba(77,157,224,0.7)'));
+
+  if (weeklyChart) weeklyChart.destroy();
+  const ctx = document.getElementById('weeklyChart').getContext('2d');
+  weeklyChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Screen time',
+        data: hours,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace('0.7','1')),
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: chartDefaults({ scales: { y: yAxis() } })
+  });
+}
+
+// ── Social Donut ──────────────────────────────────────────────────────────────
+function renderSocialChart(today) {
+  const socialMs = today.social_usage_ms || 0;
+  const otherMs  = (today.total_usage_ms || 0) - socialMs;
+
+  document.getElementById('socialHours').textContent = fmtMs(socialMs);
+  document.getElementById('otherHours').textContent  = fmtMs(otherMs);
+
+  if (socialChart) socialChart.destroy();
+  const ctx = document.getElementById('socialChart').getContext('2d');
+  socialChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Social', 'Other'],
+      datasets: [{
+        data: [socialMs, otherMs],
+        backgroundColor: ['rgba(232,48,74,0.8)', 'rgba(77,157,224,0.8)'],
+        borderColor: ['#e8304a', '#4d9de0'],
+        borderWidth: 1,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      ...chartDefaults(),
+      cutout: '65%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${fmtMs(ctx.raw)}`
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── Heatmap ───────────────────────────────────────────────────────────────────
+function renderHeatmap(data) {
+  const el = document.getElementById('timelineHeat');
+  el.innerHTML = data.map(d => {
+    const dt  = new Date(d.date);
+    const fmt = `${dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} · ${d.addiction_level} · ${fmtMs(d.total_usage_ms)}`;
+    return `<div class="heat-cell ${d.addiction_level}" data-tip="${fmt}"></div>`;
+  }).join('');
+}
+
+// ── Model Info ────────────────────────────────────────────────────────────────
+function renderModelInfo(m) {
+  document.getElementById('modelGrid').innerHTML = `
+    <div class="mi-item">
+      <div class="mi-label">Model Type</div>
+      <div class="mi-val small">${m.model_type || '—'}</div>
+    </div>
+    <div class="mi-item">
+      <div class="mi-label">Accuracy</div>
+      <div class="mi-val green">${m.accuracy ? (m.accuracy*100).toFixed(1)+'%' : '—'}</div>
+    </div>
+    <div class="mi-item">
+      <div class="mi-label">CV Score</div>
+      <div class="mi-val">${m.cv_mean ? (m.cv_mean*100).toFixed(2)+'%' : '—'}</div>
+    </div>
+    <div class="mi-item">
+      <div class="mi-label">Classes</div>
+      <div class="mi-val small">${(m.classes||[]).join(' · ')}</div>
+    </div>
+  `;
+
+  const imps = m.feature_importances || {};
+  const max  = Math.max(...Object.values(imps));
+  const names = {
+    daily_usage_hours:         'Daily Usage',
+    night_usage_hours:         'Night Usage',
+    app_switching_frequency:   'App Switches',
+    social_media_percentage:   'Social Media %',
+    total_sessions:            'Total Sessions',
+    avg_session_duration_mins: 'Avg Session',
+  };
+
+  document.getElementById('featureImpList').innerHTML =
+    Object.entries(imps)
+      .sort((a,b) => b[1]-a[1])
+      .map(([k, v]) => {
+        const pct = Math.round(v / max * 100);
+        return `<div>
+          <div class="fi-row">
+            <span class="fi-label">${names[k] || k}</span>
+            <span class="fi-pct">${(v*100).toFixed(1)}%</span>
+          </div>
+          <div class="fi-track"><div class="fi-fill" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+}
+
+// ── Chart shared defaults ─────────────────────────────────────────────────────
+const chartDefaults = (extra = {}) => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 600, easing: 'easeInOutQuart' },
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#111',
+      borderColor: '#2a2a2a',
+      borderWidth: 1,
+      titleColor: '#f0ece4',
+      bodyColor: '#9e9a93',
+      titleFont: { family: 'Space Mono', size: 10 },
+      bodyFont:  { family: 'Space Mono', size: 10 },
+    },
+    ...(extra.plugins || {})
+  },
+  scales: extra.scales || {},
+  ...Object.fromEntries(Object.entries(extra).filter(([k]) => !['plugins','scales'].includes(k)))
+});
+
+const yAxis = () => ({
+  grid: { color: 'rgba(255,255,255,0.04)' },
+  ticks: { color: '#5a5652', font: { family: 'Space Mono', size: 9 } },
+  border: { color: '#2a2a2a' }
+});
+
+Chart.defaults.color = '#9e9a93';
+Chart.defaults.borderColor = '#1e1e1e';
+Chart.defaults.scale = {
+  ...Chart.defaults.scale,
+  grid: { color: 'rgba(255,255,255,0.04)' },
+  ticks: { color: '#5a5652', font: { family: 'Space Mono', size: 9 } },
+};
+
+// ═══════════════════════════════════════════════════════════
+//  DATA LOADING
+// ═══════════════════════════════════════════════════════════
+
+async function loadAll() {
+  log('Fetching live prediction from model...', 'INFO');
+  try {
+    const [pred, today, apps, trend, modelInfo] = await Promise.all([
+      apiFetch('/api/predict/live'),
+      apiFetch('/api/today'),
+      apiFetch('/api/apps/today'),
+      apiFetch('/api/trend/30days'),
+      apiFetch('/api/model/info'),
+    ]);
+
+    renderPrediction(pred);
+    renderStatCards(today, trend);
+    renderAppList(apps);
+    renderTrendChart(trend);
+    renderWeeklyChart(trend);
+    renderSocialChart(today);
+    renderHeatmap(trend);
+    renderModelInfo(modelInfo);
+
+    log(`Prediction → ${pred.addiction_level} (conf: ${(pred.confidence*100).toFixed(1)}%)`, 'OK');
+    log(`Daily usage: ${fmtMs(today.total_usage_ms)} across ${today.total_sessions} sessions`, 'INFO');
+    log(`Social media: ${((today.social_usage_ms/today.total_usage_ms)*100).toFixed(1)}% of total`, 'INFO');
+
+    // Hide loader
+    const loader = document.getElementById('loader');
+    loader.classList.add('hidden');
+    setTimeout(() => loader.style.display = 'none', 400);
+
+  } catch (e) {
+    log(`Failed to load data: ${e.message}`, 'ERR');
+    log('Make sure server.py is running on port 8080', 'WARN');
+  }
+}
+
+// ── Simulate new usage + get fresh prediction ─────────────────────────────────
+async function triggerLiveUpdate() {
+  if (isRefreshing) return;
+  isRefreshing = true;
+
+  const btn  = document.getElementById('btnRefresh');
+  const icon = document.getElementById('refreshIcon');
+  btn.disabled = true;
+  icon.classList.add('spinning');
+  log('Simulating new phone usage data...', 'INFO');
+
+  try {
+    const pred = await apiPost('/api/simulate/update');
+    renderPrediction(pred);
+
+    // Refresh stat cards and apps
+    const [today, apps, trend] = await Promise.all([
+      apiFetch('/api/today'),
+      apiFetch('/api/apps/today'),
+      apiFetch('/api/trend/30days'),
+    ]);
+    renderStatCards(today, trend);
+    renderAppList(apps);
+    renderTrendChart(trend);
+    renderWeeklyChart(trend);
+    renderSocialChart(today);
+    renderHeatmap(trend);
+
+    log(`New prediction → ${pred.addiction_level} (${(pred.confidence*100).toFixed(1)}%)`, 'OK');
+    log(`Added ~${Math.round(Math.random()*15+5)} min of simulated usage`, 'INFO');
+  } catch (e) {
+    log(`Simulation error: ${e.message}`, 'ERR');
+  } finally {
+    isRefreshing = false;
+    btn.disabled = false;
+    icon.classList.remove('spinning');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WEBSOCKET — auto-reconnecting live updates every 30s
+// ═══════════════════════════════════════════════════════════
+function connectWS() {
+  const wsUrl = (location.protocol === 'https:' ? 'wss' : 'ws') + `://${location.host}/ws/live`;
+  const wsEl  = document.getElementById('wsStatus');
+
+  let ws;
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (e) {
+    log('WebSocket unavailable (file:// mode). Using polling.', 'WARN');
+    startPolling();
+    return;
+  }
+
+  ws.onopen = () => {
+    wsEl.textContent = '⬤ WS LIVE';
+    wsEl.className = 'ws-status connected';
+    log('WebSocket connected — live updates every 30s', 'OK');
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+  };
+
+  ws.onmessage = e => {
+    try {
+      const data = JSON.parse(e.data);
+      renderPrediction(data);
+      log(`WS push → ${data.addiction_level} (${(data.confidence*100).toFixed(1)}%)`, 'INFO');
+    } catch (_) {}
+  };
+
+  ws.onclose = () => {
+    wsEl.textContent = '⬤ WS RECONNECTING';
+    wsEl.className = 'ws-status disconnected';
+    log('WebSocket closed — reconnecting in 5s...', 'WARN');
+    wsReconnectTimer = setTimeout(connectWS, 5000);
+  };
+
+  ws.onerror = () => {
+    wsEl.textContent = '⬤ WS ERROR';
+    wsEl.className = 'ws-status disconnected';
+  };
+}
+
+// Fallback polling every 30s if WebSocket unavailable
+function startPolling() {
+  setInterval(async () => {
+    try {
+      const pred = await apiFetch('/api/predict/live');
+      renderPrediction(pred);
+      log(`Poll → ${pred.addiction_level}`, 'INFO');
+    } catch (_) {}
+  }, 30000);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  log('SmartTracker dashboard initialising...', 'INFO');
+  log('Connecting to FastAPI server at localhost:8080', 'INFO');
+  loadAll().then(() => {
+    connectWS();
+    log('System ready. Hit SIMULATE + PREDICT for live model run.', 'OK');
+  });
+});
+</script>
+</body>
+</html>

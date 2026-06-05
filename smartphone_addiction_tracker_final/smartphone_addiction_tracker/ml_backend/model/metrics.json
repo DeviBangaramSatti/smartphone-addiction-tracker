@@ -1,0 +1,19 @@
+{
+  "random_forest_accuracy": 1.0,
+  "logistic_regression_accuracy": 1.0,
+  "cv_mean": 0.9998000000000001,
+  "cv_std": 0.00040000000000000034,
+  "feature_importances": {
+    "daily_usage_hours": 0.372317443263532,
+    "night_usage_hours": 0.10328441324557205,
+    "app_switching_frequency": 0.18475662961981484,
+    "social_media_percentage": 0.09105632685424109,
+    "total_sessions": 0.23280723529683714,
+    "avg_session_duration_mins": 0.015777951720002858
+  },
+  "classes": [
+    "High",
+    "Low",
+    "Medium"
+  ]
+}

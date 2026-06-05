@@ -1,0 +1,55 @@
+// ══════════════════════════════════════════════════════════════
+//  firestore.rules — Firebase Firestore Security Rules
+//
+//  Deploy: firebase deploy --only firestore:rules
+//
+//  Rules ensure:
+//   • Users can only read/write their OWN data
+//   • No cross-user access is possible
+//   • All writes must be authenticated
+// ══════════════════════════════════════════════════════════════
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper function ──────────────────────────────────────
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── users/{uid} — top-level user document ────────────────
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      // ── settings — user preferences (cloud toggle, alert threshold)
+      // Android: FirestoreService.saveSettings() / fetchSettings()
+      // Path: users/{uid}/settings/preferences
+      match /settings/{doc} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // ── usage_logs — daily app usage data from Android
+      // Android: FirestoreService.pushUsageLogs()
+      // Path: users/{uid}/usage_logs/{date_packageName}
+      // e.g.: users/abc123/usage_logs/2024-01-15_com_instagram_android
+      match /usage_logs/{logId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // ── predictions — ML addiction level results
+      // Android: FirestoreService.savePrediction()
+      // Path: users/{uid}/predictions/{date}
+      // e.g.: users/abc123/predictions/2024-01-15
+      match /predictions/{date} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // ── Deny all other paths ─────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
