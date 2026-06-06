@@ -293,6 +293,11 @@ users/
     └── predictions/
         └── {date}            { addictionLevel, confidence, timestamp }
 ```
+## License
+
+© 2026 Devi Bangaram Satti. All rights reserved.
+
+This project is shared for viewing purposes only. No part of this code may be copied, modified, or redistributed without permission.
 
 ---
 
